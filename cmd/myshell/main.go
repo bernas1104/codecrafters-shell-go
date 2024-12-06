@@ -24,6 +24,10 @@ func main() {
 
 		command := read[0:getReadSize(read)]
 
+		if command == "exit" {
+			break
+		}
+
 		fmt.Printf("%v: %v\n", command, COMMAND_NOT_FOUND)
 	}
 }
