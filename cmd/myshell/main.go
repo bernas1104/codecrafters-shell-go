@@ -24,7 +24,7 @@ func main() {
 
 		command := read[0:getReadSize(read)]
 
-		if command == "exit" {
+		if command == "exit 0" {
 			break
 		}
 
