@@ -12,18 +12,20 @@ var _ = fmt.Fprint
 const COMMAND_NOT_FOUND = "command not found"
 
 func main() {
-	fmt.Fprint(os.Stdout, "$ ")
+	for {
+		fmt.Fprint(os.Stdout, "$ ")
 
-	// Wait for user input
-	read, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		// Wait for user input
+		read, err := bufio.NewReader(os.Stdin).ReadString('\n')
 
-	if err != nil {
-		panic("Error!")
+		if err != nil {
+			panic("Error!")
+		}
+
+		command := read[0:getReadSize(read)]
+
+		fmt.Printf("%v: %v\n", command, COMMAND_NOT_FOUND)
 	}
-
-	command := read[0:getReadSize(read)]
-
-	fmt.Printf("%v: %v\n", command, COMMAND_NOT_FOUND)
 }
 
 func getReadSize(read string) int {
