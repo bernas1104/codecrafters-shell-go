@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -11,6 +12,7 @@ import (
 type BuiltIn func([]string)
 
 var builtIns = make(map[string]BuiltIn)
+var paths = strings.Split(os.Getenv("PATH"), ":")
 
 const COMMAND_NOT_FOUND = "command not found"
 
@@ -32,9 +34,31 @@ func main() {
 
 		if operation, exists := builtIns[command]; exists {
 			operation(args)
-		} else {
-			fmt.Printf("%v: %v\n", command, COMMAND_NOT_FOUND)
+			continue
 		}
+
+		commandExecuted := false
+		for _, path := range paths {
+			if executableExistsInPath(command, path) {
+				cmd := exec.Command(getExecutablePath(command, path), args...)
+				commandExecuted = true
+
+				output, err := cmd.Output()
+				if err != nil {
+					fmt.Printf("Error while executing %v", command)
+					break
+				}
+
+				fmt.Printf("%v", string(output))
+				break
+			}
+		}
+
+		if commandExecuted {
+			continue
+		}
+
+		fmt.Printf("%v: %v\n", command, COMMAND_NOT_FOUND)
 	}
 }
 
@@ -80,7 +104,6 @@ func typeFunc(args []string) {
 		return
 	}
 
-	paths := strings.Split(os.Getenv("PATH"), ":")
 	for _, path := range paths {
 		if executableExistsInPath(args[0], path) {
 			fmt.Printf("%v is %v\n", args[0], getExecutablePath(args[0], path))
