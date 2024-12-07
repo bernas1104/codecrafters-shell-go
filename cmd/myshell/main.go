@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-type BuiltIn func(string, []string)
+type BuiltIn func([]string)
 
 var builtIns = make(map[string]BuiltIn)
 
@@ -31,7 +31,7 @@ func main() {
 		command, args := readCommand(sanitizedInput)
 
 		if operation, exists := builtIns[command]; exists {
-			operation(command, args)
+			operation(args)
 		} else {
 			fmt.Printf("%v: %v\n", command, COMMAND_NOT_FOUND)
 		}
@@ -44,7 +44,17 @@ func initializeBuiltIns() {
 	builtIns["type"] = typeFunc
 }
 
-func exit(_ string, args []string) {
+func getInputSize(input string) int {
+	return len(input) - 1
+}
+
+func readCommand(command string) (string, []string) {
+	var splitedCommand = strings.Split(command, " ")
+
+	return splitedCommand[0], splitedCommand[1:]
+}
+
+func exit(args []string) {
 	code, err := strconv.Atoi(args[0])
 
 	if err != nil {
@@ -54,7 +64,7 @@ func exit(_ string, args []string) {
 	os.Exit(code)
 }
 
-func echo(_ string, args []string) {
+func echo(args []string) {
 	for idx, arg := range args {
 		if idx == len(args)-1 {
 			fmt.Printf("%v\n", arg)
@@ -64,20 +74,31 @@ func echo(_ string, args []string) {
 	}
 }
 
-func typeFunc(command string, args []string) {
+func typeFunc(args []string) {
 	if _, exists := builtIns[args[0]]; exists {
 		fmt.Printf("%v is a shell builtin\n", args[0])
-	} else {
-		fmt.Printf("%v: not found\n", args[0])
+		return
 	}
+
+	paths := strings.Split(os.Getenv("PATH"), ":")
+	for _, path := range paths {
+		if executableExistsInPath(args[0], path) {
+			fmt.Printf("%v is %v\n", args[0], getExecutablePath(args[0], path))
+			return
+		}
+	}
+
+	fmt.Printf("%v: not found\n", args[0])
 }
 
-func getInputSize(input string) int {
-	return len(input) - 1
+func executableExistsInPath(command string, path string) bool {
+	if _, err := os.Stat(getExecutablePath(command, path)); err == nil {
+		return true
+	}
+
+	return false
 }
 
-func readCommand(command string) (string, []string) {
-	var splitedCommand = strings.Split(command, " ")
-
-	return splitedCommand[0], splitedCommand[1:]
+func getExecutablePath(executable string, path string) string {
+	return path + "/" + executable
 }
