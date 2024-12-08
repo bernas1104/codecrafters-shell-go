@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"strconv"
@@ -14,11 +13,19 @@ type BuiltIn func([]string)
 
 var builtIns = make(map[string]BuiltIn)
 var paths = strings.Split(os.Getenv("PATH"), ":")
+var cdPath string = ""
 
 const COMMAND_NOT_FOUND = "command not found"
 
 func main() {
 	initializeBuiltIns()
+	currentDirectory, err := os.Getwd()
+
+	if err != nil {
+		panic("Cannot determine current directory paath")
+	}
+
+	cdPath = currentDirectory
 
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
@@ -38,23 +45,7 @@ func main() {
 			continue
 		}
 
-		commandExecuted := false
-		for _, path := range paths {
-			if executableExistsInPath(command, path) {
-				cmd := exec.Command(getExecutablePath(command, path), args...)
-				commandExecuted = true
-
-				output, err := cmd.Output()
-				if err != nil {
-					fmt.Printf("Error while executing %v", command)
-					break
-				}
-
-				fmt.Printf("%v", string(output))
-				break
-			}
-		}
-
+		commandExecuted := tryExecuteCommand(command, args)
 		if commandExecuted {
 			continue
 		}
@@ -68,6 +59,7 @@ func initializeBuiltIns() {
 	builtIns["echo"] = echo
 	builtIns["type"] = typeFunc
 	builtIns["pwd"] = pwd
+	builtIns["cd"] = cd
 }
 
 func getInputSize(input string) int {
@@ -116,6 +108,27 @@ func typeFunc(args []string) {
 	fmt.Printf("%v: not found\n", args[0])
 }
 
+func tryExecuteCommand(command string, args []string) bool {
+	commandExecuted := false
+	for _, path := range paths {
+		if executableExistsInPath(command, path) {
+			cmd := exec.Command(getExecutablePath(command, path), args...)
+			commandExecuted = true
+
+			output, err := cmd.Output()
+			if err != nil {
+				fmt.Printf("Error while executing %v", command)
+				break
+			}
+
+			fmt.Printf("%v", string(output))
+			break
+		}
+	}
+
+	return commandExecuted
+}
+
 func executableExistsInPath(command string, path string) bool {
 	if _, err := os.Stat(getExecutablePath(command, path)); err == nil {
 		return true
@@ -129,11 +142,21 @@ func getExecutablePath(executable string, path string) string {
 }
 
 func pwd(_ []string) {
-	cwd, err := os.Getwd()
+	fmt.Println(cdPath)
+}
+
+func cd(args []string) {
+	_, err := os.Stat(args[0])
 
 	if err != nil {
-		log.Fatal(err)
+		if os.IsNotExist(err) {
+			fmt.Printf("cd: %v: No such file or directory\n", args[0])
+		} else {
+			fmt.Println("Error: ", err)
+		}
+
+		return
 	}
 
-	fmt.Println(cwd)
+	cdPath = args[0]
 }
