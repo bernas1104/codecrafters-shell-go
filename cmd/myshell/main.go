@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strconv"
@@ -66,6 +67,7 @@ func initializeBuiltIns() {
 	builtIns["exit"] = exit
 	builtIns["echo"] = echo
 	builtIns["type"] = typeFunc
+	builtIns["pwd"] = pwd
 }
 
 func getInputSize(input string) int {
@@ -124,4 +126,14 @@ func executableExistsInPath(command string, path string) bool {
 
 func getExecutablePath(executable string, path string) string {
 	return path + "/" + executable
+}
+
+func pwd(_ []string) {
+	cwd, err := os.Getwd()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(cwd)
 }
