@@ -60,6 +60,8 @@ func (l *Lexer) NextToken() token.Token {
 			literal := l.readLiteral()
 			tok = token.NewToken(token.FILE_NAME, literal)
 		}
+	case '~':
+		tok = token.NewToken(token.USER_PATH, string(l.ch))
 	case 0:
 		tok = token.NewToken(token.EOF, "")
 	default:

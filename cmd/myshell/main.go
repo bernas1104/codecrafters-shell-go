@@ -159,6 +159,15 @@ func cd(args []string) {
 		pathString = cdPath + "/" + pathString
 	}
 
+	if firstToken.Type == token.USER_PATH {
+		home := os.Getenv("HOME")
+		if home == "" {
+			home = os.Getenv("USERPROFILE")
+		}
+
+		pathString = home + pathString[1:]
+	}
+
 	info, err := os.Stat(pathString)
 
 	if err != nil {
