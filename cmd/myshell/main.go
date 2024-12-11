@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/codecrafters-io/shell-starter-go/lexer"
+	"github.com/codecrafters-io/shell-starter-go/token"
 )
 
 type BuiltIn func([]string)
@@ -146,7 +150,16 @@ func pwd(_ []string) {
 }
 
 func cd(args []string) {
-	_, err := os.Stat(args[0])
+	tokens := getTokens(args[0])
+	firstToken := tokens[0]
+
+	pathString := getPathString(tokens)
+
+	if firstToken.Type == token.GO_BACK_PATH || firstToken.Type == token.RELATIVE_PATH {
+		pathString = cdPath + "/" + pathString
+	}
+
+	info, err := os.Stat(pathString)
 
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -158,5 +171,36 @@ func cd(args []string) {
 		return
 	}
 
-	cdPath = args[0]
+	absPath, err := filepath.Abs(pathString)
+	if err != nil {
+		fmt.Println("Error: ", err)
+		return
+	}
+
+	if info.IsDir() {
+		cdPath = absPath
+		return
+	}
+
+	fmt.Printf("cd: %v: is not a directory\n", absPath)
+}
+
+func getTokens(arg string) []token.Token {
+	l := lexer.New(arg)
+	var tokens []token.Token
+
+	for tok := l.NextToken(); tok.Type != token.EOF; tok = l.NextToken() {
+		tokens = append(tokens, tok)
+	}
+
+	return tokens
+}
+
+func getPathString(tokens []token.Token) string {
+	var pathString string = ""
+	for _, tok := range tokens {
+		pathString += tok.Literal
+	}
+
+	return pathString
 }
