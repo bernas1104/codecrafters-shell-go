@@ -17,6 +17,7 @@ type BuiltIn func([]string)
 
 var builtIns = make(map[string]BuiltIn)
 var paths = strings.Split(os.Getenv("PATH"), ":")
+
 var cdPath string = ""
 
 const COMMAND_NOT_FOUND = "command not found"
@@ -42,7 +43,19 @@ func main() {
 		}
 
 		sanitizedInput := input[0:getInputSize(input)]
-		command, args := readCommand(sanitizedInput)
+		tokens := getTokens(sanitizedInput)
+
+		command := token.GetCommand(tokens)
+
+		var args []string
+		if len(tokens) > 2 {
+			args = token.GetArguments(tokens[2:])
+			for i := 0; i < len(args); i++ {
+				if strings.ContainsRune(args[i], '\'') {
+					args[i] = removeSingleQuotes(args[i])
+				}
+			}
+		}
 
 		if operation, exists := builtIns[command]; exists {
 			operation(args)
@@ -68,12 +81,6 @@ func initializeBuiltIns() {
 
 func getInputSize(input string) int {
 	return len(input) - 1
-}
-
-func readCommand(command string) (string, []string) {
-	var splitedCommand = strings.Split(command, " ")
-
-	return splitedCommand[0], splitedCommand[1:]
 }
 
 func exit(args []string) {
@@ -121,7 +128,8 @@ func tryExecuteCommand(command string, args []string) bool {
 
 			output, err := cmd.Output()
 			if err != nil {
-				fmt.Printf("Error while executing %v", command)
+				fmt.Println(err)
+				fmt.Printf("Error while executing %v\n", command)
 				break
 			}
 
@@ -212,4 +220,8 @@ func getPathString(tokens []token.Token) string {
 	}
 
 	return pathString
+}
+
+func removeSingleQuotes(arg string) string {
+	return arg[1 : len(arg)-1]
 }

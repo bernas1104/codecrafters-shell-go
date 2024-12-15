@@ -1,6 +1,11 @@
 package lexer
 
-import "github.com/codecrafters-io/shell-starter-go/token"
+import (
+	"github.com/codecrafters-io/shell-starter-go/token"
+	"github.com/codecrafters-io/shell-starter-go/utils"
+)
+
+var breakers = []string{"\\", " ", "/"}
 
 type Lexer struct {
 	input        string
@@ -41,32 +46,28 @@ func (l *Lexer) NextToken() token.Token {
 			literal := string(ch) + string(l.ch)
 			tok = token.NewToken(token.RELATIVE_PATH, literal)
 		} else if l.peekChar() == '.' {
-			var chs []rune
-			chs = append(chs, l.ch)
+			ch := l.ch
 			l.readChar()
 
-			if l.peekChar() == '/' {
-				chs = append(chs, l.ch)
-				l.readChar()
-
-				literal := string(chs) + string(l.ch)
-				tok = token.NewToken(token.GO_BACK_PATH, literal)
-			} else {
-				literal := l.readLiteral()
-				literal = string(chs) + literal
-				tok = token.NewToken(token.FILE_NAME, literal)
-			}
+			literal := string(ch) + string(l.ch)
+			tok = token.NewToken(token.GO_BACK_PATH, literal)
 		} else {
 			literal := l.readLiteral()
-			tok = token.NewToken(token.FILE_NAME, literal)
+			tok = token.NewToken(token.IDENTIFIER, literal)
 		}
 	case '~':
 		tok = token.NewToken(token.USER_PATH, string(l.ch))
+	case ' ':
+		for l.peekChar() == ' ' {
+			l.readChar()
+		}
+
+		tok = token.NewToken(token.SPACE, " ")
 	case 0:
 		tok = token.NewToken(token.EOF, "")
 	default:
 		literal := l.readLiteral()
-		tok = token.NewToken(token.FILE_NAME, literal)
+		tok = token.NewToken(token.IDENTIFIER, literal)
 	}
 
 	l.readChar()
@@ -82,17 +83,38 @@ func (l *Lexer) peekChar() rune {
 	}
 }
 
+func (l *Lexer) previousChar() rune {
+	return rune(l.input[l.readPosition-1])
+}
+
 func (l *Lexer) readLiteral() string {
 	var chs []rune
+	var literal string
 
-	for l.peekChar() != '/' && l.peekChar() != 0 {
+	if l.ch != '\'' {
+		for !utils.Contains(breakers, string(l.peekChar())) && l.peekChar() != 0 {
+			ch := l.ch
+			l.readChar()
+
+			chs = append(chs, ch)
+		}
+
+		literal = string(chs) + string(l.ch)
+	} else {
 		ch := l.ch
 		l.readChar()
 
 		chs = append(chs, ch)
-	}
 
-	literal := string(chs) + string(l.ch)
+		for l.previousChar() != '\'' {
+			ch := l.ch
+			l.readChar()
+
+			chs = append(chs, ch)
+		}
+
+		literal = string(chs) + string(l.ch)
+	}
 
 	return literal
 }
