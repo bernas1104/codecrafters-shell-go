@@ -51,8 +51,8 @@ func main() {
 		if len(tokens) > 2 {
 			args = token.GetArguments(tokens[2:])
 			for i := 0; i < len(args); i++ {
-				if strings.ContainsRune(args[i], '\'') {
-					args[i] = removeSingleQuotes(args[i])
+				if strings.ContainsRune(args[i], '\'') || strings.ContainsRune(args[i], '"') {
+					args[i] = removeQuotes(args[i])
 				}
 			}
 		}
@@ -222,6 +222,6 @@ func getPathString(tokens []token.Token) string {
 	return pathString
 }
 
-func removeSingleQuotes(arg string) string {
+func removeQuotes(arg string) string {
 	return arg[1 : len(arg)-1]
 }

@@ -91,7 +91,7 @@ func (l *Lexer) readLiteral() string {
 	var chs []rune
 	var literal string
 
-	if l.ch != '\'' {
+	if l.ch != '\'' && l.ch != '"' {
 		for !utils.Contains(breakers, string(l.peekChar())) && l.peekChar() != 0 {
 			ch := l.ch
 			l.readChar()
@@ -101,12 +101,18 @@ func (l *Lexer) readLiteral() string {
 
 		literal = string(chs) + string(l.ch)
 	} else {
+		delimiter := '\''
+
+		if l.ch != '\'' {
+			delimiter = '"'
+		}
+
 		ch := l.ch
 		l.readChar()
 
 		chs = append(chs, ch)
 
-		for l.previousChar() != '\'' {
+		for l.previousChar() != delimiter && l.peekChar() != 0 {
 			ch := l.ch
 			l.readChar()
 
