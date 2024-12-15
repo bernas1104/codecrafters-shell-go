@@ -24,6 +24,7 @@ const COMMAND_NOT_FOUND = "command not found"
 
 func main() {
 	initializeBuiltIns()
+	token.InitializeEscapeCharacters()
 	currentDirectory, err := os.Getwd()
 
 	if err != nil {
@@ -50,11 +51,6 @@ func main() {
 		var args []string
 		if len(tokens) > 2 {
 			args = token.GetArguments(tokens[2:])
-			for i := 0; i < len(args); i++ {
-				if strings.ContainsRune(args[i], '\'') || strings.ContainsRune(args[i], '"') {
-					args[i] = removeQuotes(args[i])
-				}
-			}
 		}
 
 		if operation, exists := builtIns[command]; exists {
@@ -220,8 +216,4 @@ func getPathString(tokens []token.Token) string {
 	}
 
 	return pathString
-}
-
-func removeQuotes(arg string) string {
-	return arg[1 : len(arg)-1]
 }

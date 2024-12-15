@@ -63,6 +63,11 @@ func (l *Lexer) NextToken() token.Token {
 		}
 
 		tok = token.NewToken(token.SPACE, " ")
+	case '\\':
+		ch := l.ch
+		l.readChar()
+
+		tok = token.NewToken(token.ESCAPE, string(ch)+string(l.ch))
 	case 0:
 		tok = token.NewToken(token.EOF, "")
 	default:
