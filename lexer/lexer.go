@@ -168,6 +168,10 @@ func GetArguments(tks []token.Token) []string {
 	var args []string
 	var quotesType int
 
+	if tks[0].Type != token.IDENTIFIER {
+		args = append(args, "cd")
+	}
+
 	for i := 0; i < len(tks); i++ {
 		if tks[i].Literal[0] == '\'' || tks[i].Literal[0] == '"' {
 			tks[i].Literal = removeQuotes(tks[i].Literal)

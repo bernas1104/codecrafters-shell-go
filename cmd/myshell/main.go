@@ -46,12 +46,11 @@ func main() {
 		sanitizedInput := input[0:getInputSize(input)]
 		tokens := lexer.GetTokens(sanitizedInput)
 
-		command := lexer.GetCommand(tokens)
-
 		var args []string
-		if len(tokens) > 2 {
-			args = lexer.GetArguments(tokens[2:])
-		}
+		args = lexer.GetArguments(tokens)
+
+		command := args[0]
+		args = args[1:]
 
 		if operation, exists := builtIns[command]; exists {
 			operation(args)
