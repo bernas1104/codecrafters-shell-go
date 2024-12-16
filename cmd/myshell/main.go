@@ -24,7 +24,7 @@ const COMMAND_NOT_FOUND = "command not found"
 
 func main() {
 	initializeBuiltIns()
-	token.InitializeEscapeCharacters()
+	lexer.InitializeEscapeCharacters()
 	currentDirectory, err := os.Getwd()
 
 	if err != nil {
@@ -44,13 +44,13 @@ func main() {
 		}
 
 		sanitizedInput := input[0:getInputSize(input)]
-		tokens := getTokens(sanitizedInput)
+		tokens := lexer.GetTokens(sanitizedInput)
 
-		command := token.GetCommand(tokens)
+		command := lexer.GetCommand(tokens)
 
 		var args []string
 		if len(tokens) > 2 {
-			args = token.GetArguments(tokens[2:])
+			args = lexer.GetArguments(tokens[2:])
 		}
 
 		if operation, exists := builtIns[command]; exists {
@@ -154,7 +154,7 @@ func pwd(_ []string) {
 }
 
 func cd(args []string) {
-	tokens := getTokens(args[0])
+	tokens := lexer.GetTokens(args[0])
 	firstToken := tokens[0]
 
 	pathString := getPathString(tokens)
@@ -196,17 +196,6 @@ func cd(args []string) {
 	}
 
 	fmt.Printf("cd: %v: is not a directory\n", absPath)
-}
-
-func getTokens(arg string) []token.Token {
-	l := lexer.New(arg)
-	var tokens []token.Token
-
-	for tok := l.NextToken(); tok.Type != token.EOF; tok = l.NextToken() {
-		tokens = append(tokens, tok)
-	}
-
-	return tokens
 }
 
 func getPathString(tokens []token.Token) string {
