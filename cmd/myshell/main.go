@@ -6,23 +6,28 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
 	"github.com/codecrafters-io/shell-starter-go/lexer"
 	"github.com/codecrafters-io/shell-starter-go/token"
+	"github.com/codecrafters-io/shell-starter-go/utils"
 )
 
-type BuiltIn func([]string)
+type BuiltIn func([]string) []byte
 
 var builtIns = make(map[string]BuiltIn)
-var paths = strings.Split(os.Getenv("PATH"), ":")
 
+var paths []string
+var usrBinPath = ""
 var cdPath string = ""
+var redirectStdout bool = false
 
 const COMMAND_NOT_FOUND = "command not found"
 
 func main() {
+	initializePaths()
 	initializeBuiltIns()
 	lexer.InitializeEscapeCharacters()
 	currentDirectory, err := os.Getwd()
@@ -52,11 +57,6 @@ func main() {
 		command := args[0]
 		args = args[1:]
 
-		if operation, exists := builtIns[command]; exists {
-			operation(args)
-			continue
-		}
-
 		commandExecuted := tryExecuteCommand(command, args)
 		if commandExecuted {
 			continue
@@ -66,19 +66,39 @@ func main() {
 	}
 }
 
+func initializePaths() {
+	var splitter string = ""
+
+	if runtime.GOOS == "windows" {
+		splitter = ";"
+		usrBinPath = "C:\\Program Files\\Git\\usr\\bin"
+	} else {
+		splitter = ":"
+		usrBinPath = "/usr/bin"
+	}
+
+	paths = strings.Split(os.Getenv("PATH"), splitter)
+}
+
 func initializeBuiltIns() {
+	builtIns["cd"] = cd
 	builtIns["exit"] = exit
-	builtIns["echo"] = echo
 	builtIns["type"] = typeFunc
 	builtIns["pwd"] = pwd
-	builtIns["cd"] = cd
+	builtIns["echo"] = echo
 }
 
 func getInputSize(input string) int {
-	return len(input) - 1
+	ignoredCharacters := 2
+
+	if utils.Contains([]string{"linux", "unix"}, runtime.GOOS) {
+		ignoredCharacters = 1
+	}
+
+	return len(input) - ignoredCharacters
 }
 
-func exit(args []string) {
+func exit(args []string) []byte {
 	code, err := strconv.Atoi(args[0])
 
 	if err != nil {
@@ -86,39 +106,59 @@ func exit(args []string) {
 	}
 
 	os.Exit(code)
+	return []byte{}
 }
 
-func echo(args []string) {
-	for idx, arg := range args {
-		if idx == len(args)-1 {
-			fmt.Printf("%v\n", arg)
-		} else {
-			fmt.Printf("%v ", arg)
-		}
+func echo(args []string) []byte {
+	cmd := exec.Command(getExecutablePath("echo", usrBinPath), args...)
+	bytes, err := cmd.Output()
+
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		return []byte{}
 	}
+
+	return bytes
 }
 
-func typeFunc(args []string) {
+func typeFunc(args []string) []byte {
 	if _, exists := builtIns[args[0]]; exists {
 		fmt.Printf("%v is a shell builtin\n", args[0])
-		return
+		return []byte{}
 	}
 
 	for _, path := range paths {
 		if executableExistsInPath(args[0], path) {
 			fmt.Printf("%v is %v\n", args[0], getExecutablePath(args[0], path))
-			return
+			return []byte{}
 		}
 	}
 
 	fmt.Printf("%v: not found\n", args[0])
+	return []byte{}
 }
 
 func tryExecuteCommand(command string, args []string) bool {
 	commandExecuted := false
+	usedArgs := args
+
+	if utils.AnyMultiple([]string{"1>", ">"}, args) {
+		redirectStdout = true
+		usedArgs = args[0:utils.FindRedirectIndex(args)]
+	}
+
+	if operation, exists := builtIns[command]; exists {
+		output := operation(usedArgs)
+		commandExecuted = true
+
+		handleCommandOutput(output, args)
+
+		return commandExecuted
+	}
+
 	for _, path := range paths {
 		if executableExistsInPath(command, path) {
-			cmd := exec.Command(getExecutablePath(command, path), args...)
+			cmd := exec.Command(getExecutablePath(command, path), usedArgs...)
 			commandExecuted = true
 
 			output, err := cmd.Output()
@@ -128,7 +168,7 @@ func tryExecuteCommand(command string, args []string) bool {
 				break
 			}
 
-			fmt.Printf("%v", string(output))
+			handleCommandOutput(output, usedArgs)
 			break
 		}
 	}
@@ -145,14 +185,32 @@ func executableExistsInPath(command string, path string) bool {
 }
 
 func getExecutablePath(executable string, path string) string {
+	if runtime.GOOS == "windows" {
+		return path + "\\" + executable
+	}
+
 	return path + "/" + executable
 }
 
-func pwd(_ []string) {
-	fmt.Println(cdPath)
+func handleCommandOutput(output []byte, args []string) {
+	if redirectStdout {
+		idx := utils.FindRedirectIndex(args)
+
+		filePath := args[idx+1]
+
+		err := os.WriteFile(filePath, output, 0644)
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Printf("%v", string(output))
 }
 
-func cd(args []string) {
+func pwd(_ []string) []byte {
+	return []byte(cdPath)
+}
+
+func cd(args []string) []byte {
 	tokens := lexer.GetTokens(args[0])
 	firstToken := tokens[0]
 
@@ -180,21 +238,22 @@ func cd(args []string) {
 			fmt.Println("Error: ", err)
 		}
 
-		return
+		return []byte{}
 	}
 
 	absPath, err := filepath.Abs(pathString)
 	if err != nil {
 		fmt.Println("Error: ", err)
-		return
+		return []byte{}
 	}
 
 	if info.IsDir() {
 		cdPath = absPath
-		return
+		return []byte{}
 	}
 
 	fmt.Printf("cd: %v: is not a directory\n", absPath)
+	return []byte{}
 }
 
 func getPathString(tokens []token.Token) string {

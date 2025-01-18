@@ -24,6 +24,7 @@ const (
 
 	SPACE  = "SPACE"
 	ESCAPE = "ESCAPE"
+	STDOUT = "STDOUT"
 
 	IDENTIFIER = "IDENT"
 )

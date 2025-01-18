@@ -89,6 +89,13 @@ func (l *Lexer) NextToken() token.Token {
 			l.readChar()
 			tok = token.NewToken(token.ESCAPE, string(ch)+string(l.ch), token.NotQuoted)
 		}
+	case '>':
+		tok = token.NewToken(token.STDOUT, ">", token.NotQuoted)
+	case '1':
+		ch := l.ch
+		l.readChar()
+
+		tok = token.NewToken(token.STDOUT, string(ch)+string(l.ch), token.NotQuoted)
 	case 0:
 		tok = token.NewToken(token.EOF, "", token.NotQuoted)
 	default:
